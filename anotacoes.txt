@@ -1,0 +1,542 @@
+CRIANDO UMA API REST
+
+    - TypeORM https://typeorm.io/#/
+    - TypeScript
+    - NodeJS
+    - PostgreSQL
+
+1º Instalar o TypeORM de forma GLOBAL
+
+    - npm install typeorm -g
+
+    ou
+
+    - yarn global add typeorm
+
+2º Iniciando o projeto
+
+    typeorm init --name MyProject --database postgres --express
+
+    o banco pode ser mysql.
+
+3º Configurando o BD
+
+    Nos arquivos gerados tem um arquivo chamado ormconfig.json é nele que configuraremos as credênciais.
+    Após passar as credênciais:
+
+        "username": "postgres",
+        "password": "postgres",
+        "database": "db_tasks",
+
+    execute: yarn install para instalar as dependências do package.json
+
+    Baixando o postgres
+
+        https://www.postgresql.org/download/
+
+    Apos executa o executavel do postgres, next, next e desmarca o checkbox do stack builder e next
+
+    Senha definida: postgres
+
+    # Usando o postgres via CLI
+
+    Abra o shell sql em seguida der enter, enter, enter e digite a senha definida.
+
+
+    Listar bancos de dados / schemas
+        
+        \l
+
+    Criar banco de dados
+        
+        create database db_aula;
+
+    Feche o SQL Shell (psql)
+        
+        Quando abrir novamente, database = (seubanco) no meu exemplo: db_aula
+
+    Listar tabelas existentes
+        
+        \dt;
+    
+    Criar uma Tabela
+        create table alunos (
+            id_aluno serial primary key,
+            nome varchar(50),
+            telefone varchar(15)
+        );
+    
+    Mostrar estrutura de uma tabela
+        
+        \d alunos;
+    
+    Adicionar um registro na tabela
+        
+        insert into alunos (nome,telefone) values (‘DANIEL DE MORAIS’,’123456′);
+
+    Exibindo registros da Tabela
+
+        select * from table_name;
+
+    
+    # Usando o postgres via pgAdmin
+
+    Clique na bandeira do windows e digite pgAdmin. irá abrir o admin do postgress no navegador.
+    Digite a senha: postgress
+
+
+
+
+4º Vamos refatorar o codigo do workflow que o orm gera
+
+    - No arquivo routes.ts da pasta src apague tudo
+
+    Digite:
+
+        import { } from 'express';
+    
+    Obs: que apareceu ... na palavra express, coloque o cursor do mouse em cima e exibirá o motivo.
+
+    Could not find a declaration file for module 'express'. 'c:/Users/DELL/Desktop/tasks_api/node_modules/express/index.js' implicitly has an 'any' type.
+    Try `npm install @types/express` if it exists or add a new declaration (.d.ts) file containing `declare module 'express';`
+
+    Precisamos instalar o @types/express.
+    Digite:
+
+        yarn add @types/express -D 
+
+    Após instalado, vamos inserir os componentes dentro de {  }:
+
+        Router, Request, Response
+    
+
+    Em seguida criaremos uma rota do tipo get()
+
+        const routes = Router();
+
+        routes.get('/', (request: Request, response: Response) => {
+            return response.json({ message: 'Hello World!' })
+        });
+
+        export default routes;
+
+5º Agora no arquivo index.ts da pasta src apague toda função createConnection() deixando apenas os imports
+
+
+    observe que o import import {Routes} from "./routes"; está com erro.
+    vamos apagar {Routes} e usar apenas o
+     
+        import routes from "./routes";
+
+    pois estamos usando o export default routes no arquivo de routes.ts
+
+    Agora vamos remover os seguinte imports:
+
+        import {createConnection} from "typeorm";
+        import {Request, Response} from "express";
+        import {User} from "./entity/User";
+
+
+6º Insominia para fazer as requisições da nossa API
+
+    - vamos instalar o nodemon para não ter que parar o servidor quando fizer algum ajuste no projeto.
+
+        yarn add nodemon -D
+
+    Em seguida criaremos um arquivo chamado nodemon.json na raiz do projeto.
+    E configuraremos ele da seguinte forma:
+
+        {
+            "watch": ["src"], // Observa o caminho modificado e atualiza o servidor automaticamente.
+            "ext": "ts", // Observa as extensões.
+            "execMap": {
+                "ts": "ts-node src/index.ts" // Comando para rodar o servidor
+            }
+        }
+
+    é um arquivo que automatiza algumas coisas, semelhante ao gulp/webpack/babel
+
+    Agora no arquivo package.json crie um script chamado "dev":
+
+        "scripts": {
+            "dev": "nodemon src/index.ts", // execute o index.ts da pasta src.
+        }
+    
+    execute: yarn dev
+
+    Agora quaquer mudança que fizer o servidor atualiza sozinho
+
+
+7º Entidades
+
+    Por padrão quando criamos um projeto com o typeorm ele ja vem uma: 
+    
+        - entindade e um controler com um arquivo de usuario.
+    
+    Então dentro da pasta entity apagamos o arquivo User.ts para criar uma nova entidade.
+    Criaremos a entidede Tasks
+
+    Crie um novo arquivo dentro de entity chamado: Tasks.ts
+
+    Insira o codigo abaixo:
+
+        import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+
+        // Nossa tabela no banco de dados.
+        // importe o typeorm e o componente { Entity }
+        @Entity() // ao definir @Entity estamos dizendo que a class Tasks agora é uma tabela
+        export class Tasks {
+
+            @PrimaryGeneratedColumn() // definindo o id como primary_key automatico
+            id: number;
+
+            @Column() // Como o title é tipo string é considerado um varchar, Por padrão é not null e o tam. é padrão 255
+            title: string;
+
+            @Column()
+            description: string;
+
+            // Toda vez que for criado uma task já venha definido como false
+            // Como o valor é definido como padrão false colocamos dessa forma.
+            @Column({ 
+                default: false
+            })
+            finished: boolean;
+
+            @CreateDateColumn()
+            created_at: Date; // Toda vez que uma task for criada é inserido a data de criação dela.
+
+            @UpdateDateColumn()
+            updated_at: Date; // Toda vez que uma task for atualizada é inserido a data de atualização dela.
+        }
+
+
+    Agora no aquivo index.ts da pasta src import o component { createConnection } do 'typeorm'
+
+        // crateconnection do typeorm para criar a conexão com o banco de dados 
+        // e gerar as tabelas automaticamentes de acordo com as entidades.
+        import { createConnection } from 'typeorm'; 
+
+    abaixo de const app = express() insira createConnection()
+
+8º Agora criaremos o CONTROLLER
+
+    Em src/controller gerado automaticamente pelo typeorm vamos apagar o controller gerado por ele e criar um novo.
+
+    Dentro da pasta controller crie um arquivo chamado: 
+    
+        TasksController.ts
+
+    e insira o codigo:
+
+        import { getRepository } from 'typeorm'; // o componente getRepository ele pega a entidade Task.ts e vai setar todos os métodos CREATE,UPDATE,DELETE,FIND,FINDON ETC;
+        import { Tasks } from '../entity/Tasks' // import a entidade Task
+        import { Request, Response } from 'express' // import o request e o response do express
+
+
+        // Primeiro criamos o metodo getTasks() 
+        // Vamos usar o export pois vamos chamar todos esses métodos no arquivo routes.ts
+        // OBS: Como estamos fazendo uma requisição no banco de dados, isso pode demorar ou não, então usaremos o async pq se retorna uma promisse.
+        // Vamos usar o await, para esperarmos a execução da consulta no banco de dados e trazer as infos que queremos.
+
+        export const getTasks = async (request: Request, response: Response) => {
+            
+            // Pegue a entidade Tasks com o método getRepository() 
+            // O find() retorna todos os dados da tabela Tasks
+            const tasks =  await getRepository(Tasks).find();
+
+            // Retorna em formato json a variavel tasks
+            return response.json(tasks)
+        };
+
+    Agora no arquivo de routes.js da pasta src importamos o método getTasks()
+
+        import { getTasks ✅ } from './controller/TasksController'; // importe o método getTasks()
+
+    Em seguida criamos a nossa rota para exibir as tasks
+
+        routes.get('/tasks', getTasks); // Não precisamos seguir o modelo da rota / pois o método getTask() já retorna o tipo json()
+
+9º INSOMINIA
+
+    crie uma pasta chamado TASKS_API e dentro dela um New Request
+
+    a url é: http://localhost:3333/tasks do tipo GET 
+    
+    Clique em Send retornará 200 mais não temos nenhum dado ainda.
+
+    Agora vamos criar uma rota para inserirmos os dados
+
+10º MÉTODO PARA CRIAR TASK
+
+    Abaixo do método getTasks() insira o codigo abaixo:
+
+        // Método saveTask()
+        export const saveTask = async (request: Request, response: Response) => {
+
+            // O request.body é onde está todos os dados, então usamos o save para salvar
+            const task = await getRepository(Tasks).save(request.body); // salvamos o request.body que vem todos os dados da tabela task
+            
+            return response.json(task)
+        };
+
+    Agora no arquivo routes.ts da pasta src insira o método saveTask dentro do import do controller
+
+        import { getTasks, saveTask ✅ } from './controller/TasksController'; // importe o método getTasks() e o saveTask()
+    
+    Em seguida criamos a rota do tipo post()
+
+        routes.post('/tasks',saveTask); // Não precisamos seguir o modelo da rota / pois o método saveTask() já retorna o tipo json()
+
+    Agora no INSOMINIA criamos um New Request com o nome: SaveTasks do tipo POST e na opção No Body selecionamos o tipo JSON
+
+        - Insira a url http://localhost:3333/tasks
+        - Insira os campos na aba JSON
+
+            {
+                "title": "Estudar TypeScript",
+                "description": "Criar projetos com typescript"
+            }
+
+        Só precisamos inserir esses dois campos, pois o demais são gerados automaticos
+
+            "id": 1,
+            "finished": false,
+            "created_at": "2020-10-04T15:03:40.434Z",
+            "updated_at": "2020-10-04T15:03:40.434Z"
+
+        Clique em Send e retornará 200 e na aba Preview podemos ver os dados inseridos
+
+            {
+                "title": "Estudar typescript",
+                "description": "Criar projetos com typescript",
+                "id": 1,
+                "finished": false,
+                "created_at": "2020-10-04T15:03:40.434Z",
+                "updated_at": "2020-10-04T15:03:40.434Z"
+            }
+
+        Agora podemos ir no banco de dados e fazer um refresh na tabela tasks para ver a inserção
+
+        No Insominia na Request GetTask se clicarmos no send podemos ver um array de objetos com todas as tasks criadas
+
+        Vamos inserir mais uma task via INSOMINIA.
+
+        Na Request SaveTasks insira na aba JSON
+
+            {
+	            "title": "Estudar Nodejs",
+	            "description": "Criar projetos com nodejs"
+            }
+        
+        Em seguida clique em send e o retorno será 200 
+        Atualizamos a tabela tasks no banco de dados e podemos ver que foi inserido o registro.
+
+        No Insominia na Request GetTask se clicarmos no send podemos ver um array de objetos com todas as tasks criadas
+
+11º MÉTODO PARA PEGAR APENAS UMA TASK
+
+    No arquivo TasksController insira o método abaixo:
+
+        // Método getTask()
+        // Pega apenas uma task por ID
+        export const getTask = async (request: Request, response: Response) => {
+            // Usamos o params para pega apenas o ID como parametro na requisição da task 
+            // Vamos fazer a desistruturação do es6 pois como existe muitos parametros então só queremos o ID
+            const { id } = request.params
+            const task = await getRepository(Tasks).findOne(id); // No findOne passamos o ID da task que recuperamos nos parametros
+
+            return response.json(task);
+        };
+
+    Agora no arquivo de routes.ts crie uma rota para pegar uma única task
+
+        primeiro import o método getTask()
+
+            import { getTasks, saveTask, getTask ✅ } from './controller/TasksController'; // importe o método getTask()
+
+        em seguida cria a rota:
+
+            routes.get('/tasks/:id', getTask); // Não precisamos seguir o modelo da rota / pois o método getTask() já retorna o tipo json()
+
+12º INSOMINIA
+
+    Duplique a Request GetTask e insira a url com o id como parametro:
+
+        http://localhost:3333/tasks/1
+
+        http://localhost:3333/tasks/2
+
+    Clique em Send e verá o resultado 200
+
+
+13º MÉTODO PARA ATUALIZAR APENAS UMA TASK
+
+    // Método updateTask()
+    export const updateTask = async (request: Request, response: Response) => {
+    
+        // pegamos o ID da task que queremos atualizar
+        const { id } = request.params;
+
+        // O método update() possui 2 parametros obrigatórios ID e CORPO que é o request.body
+        // ele não retorna o objeto da task que foi inserida no banco. Como é um update ele vai retorna se alguma task foi afetada no banco de dados
+        const task = await getRepository(Tasks).update(id, request.body);
+        
+        // Então fazemos um if para verificar quantas linhas foram afetadas no caso so queremos 1 linha.
+        if (task.affected === 1) { // se for true retorne um json 
+            const taskUpdated = await getRepository(Tasks).findOne(id)
+            return response.json(taskUpdated);
+        }
+
+        // Se não cair no if acima é pq o ID do request.params não possui uma task ou melhor não foi afetado nenhuma tarefa. 
+        return response.status(404).json({ message: 'Task not found!' });
+    };
+
+    Agora no arquivo de routes.ts crie uma rota para atualizar uma única task
+
+        primeiro import o método updateTask()
+
+            import { getTasks, saveTask, getTask, updateTask ✅ } from './controller/TasksController'; // importe o método updateTask()
+
+        em seguida cria a rota:
+
+            routes.put('/tasks/:id',updateTask); // Não precisamos seguir o modelo da rota / pois o método updateTask() já retorna o tipo json()
+
+14º INSOMINIA
+
+    Duplique a Request SaveTasks e nomei como UpdateTask 
+    insira a url com o id como parametro:
+
+        http://localhost:3333/tasks/2 
+
+    Troque o método do tipo POST para PUT e na aba JSON digite o seguinte:
+
+        {
+	        "title": "Estudar Nodejs Atualizado",
+	        "description": "Criar projetos com nodejs"
+        }
+    
+    Clique em Send e retornará 200. Se fizermos um refresh na tabela Tasks no banco de dados podemos ver que foi atualizado o registro.
+
+    Se passarmos um id que não existe por exemplo:
+
+        http://localhost:3333/tasks/3
+
+    retornará a mensagem 'Task not found!' que definimos no método updateTask()
+
+
+15º MÉTODO PARA DIZER QUE A TAREFA FOI FINALIZADA
+
+    Semelhante ao método updateTask()
+
+    // Método finnishedTask()
+    // Método para dizer que a tarefa foi finalizada
+    export const finishedTask = async (request: Request, response: Response) => {
+        const { id } = request.params;
+
+        // No método update() passamos o id e um objeto especificando qual a coluna e o valor que queremos atualizar.
+        const task = await getRepository(Tasks).update(id, {
+            // Quando a task for finalizada o valor padrão que é false passa para true
+            // column e value
+            finished: true
+        });
+
+        if (task.affected === 1) {
+            const taskUpdated = await getRepository(Tasks).findOne(id);
+            return response.json({ message: 'Task finished' });
+        }
+
+        return response.status(404).json({ message: 'Task not found!' });
+    };
+
+    Agora no arquivo de routes.ts crie uma rota para atualizar um ÚNICO registro no banco de dados
+
+        primeiro import o método updateTask()
+
+            import { getTasks, saveTask, getTask, updateTask, finishedTask ✅ } from './controller/TasksController'; // importe o método finishedTask()
+
+        em seguida cria a rota:
+            // o método patch serve para quando queremos atualizar um único registro no banco
+            routes.patch('/tasks/:id', finishedTask); // Não precisamos seguir o modelo da rota / pois o método updateTask() já retorna o tipo json()
+
+
+16º INSOMINIA
+
+    Duplique a Request GetTasks e nomei como FinishedTask
+
+    Altere o método para PTCH
+
+    Na url digite: http://localhost:3333/tasks/1 e clique em Send para ver o resultado 
+    podemos ver que o retorno é 200
+
+        {
+            "message": "Task finished"
+        }
+
+    Agora clique em GetTasks e Send e veremos que o finished foi alterado
+
+    resultado:
+
+        [
+            {
+                "id": 2,
+                "title": "Estudar Nodejs Atualizado",
+                "description": "Criar projetos com nodejs",
+                "finished": false,
+                "created_at": "2020-10-04T15:09:59.848Z",
+                "updated_at": "2020-10-04T15:50:31.703Z"
+            },
+            {
+                "id": 1,
+                "title": "Estudar typescript",
+                "description": "Criar projetos com typescript",
+                "finished": true, ✅
+                "created_at": "2020-10-04T15:03:40.434Z",
+                "updated_at": "2020-10-04T16:13:51.356Z"
+            }
+        ]
+
+17º MÉTODO DELETE
+
+    // Método removeTask()
+    export const removeTask = async (request: Request, response: Response) => {
+        const { id } = request.params;
+
+        const task = await getRepository(Tasks).delete(id);
+
+        if(task.affected === 1) {
+            const taskUpdated = await getRepository(Tasks).findOne(id);
+            return response.json({ message: 'Task removed!' });
+        }
+
+        return response.status(404).json({ message: 'Task not found' });
+    }
+
+    Agora no arquivo de routes.ts crie uma rota para atualizar um ÚNICO registro no banco de dados
+
+        primeiro import o método updateTask()
+
+            import { getTasks, saveTask, getTask, updateTask, finishedTask, removeTask ✅ } from './controller/TasksController'; // importe o método removeTask()
+
+        em seguida cria a rota:
+           
+           routes.delete('/tasks/:id', removeTask); // Não precisamos seguir o modelo da rota / pois o método updateTask() já retorna o tipo json()
+
+18º INSOMINIA
+
+    Duplique a Request FinishedTask e nomei como DeleteTask
+
+    Altere o método PTCH para DELETE
+
+    Na url digite: http://localhost:3333/tasks/1 e clique em Send para ver o resultado 
+    podemos ver que o retorno é 200
+
+    {
+        "message": "Task removed!"
+    }
+
+    Agora clique na Request GetTasks e em Send para ver se o registro foi removido.
+    Atualize a tabela no banco para ver se o registro foi deletado também.
+
+
+FIM
